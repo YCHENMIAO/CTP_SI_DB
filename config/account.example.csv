@@ -1,0 +1,8 @@
+appid,simnow_client_test
+authcode,0000000000000000
+product,simnow
+brokerId,9999
+userId,your_user_id
+passwd,your_password
+MarketFront,tcp://host:port
+TradeFront,tcp://host:port
