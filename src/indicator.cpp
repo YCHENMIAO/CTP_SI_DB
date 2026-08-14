@@ -91,6 +91,7 @@ bool CIndicator::Getspread(const CThostFtdcDepthMarketDataField& stTick, double&
 	}
 
 	dSpread = stTick.AskPrice1 - stTick.BidPrice1;
+
 	return true;
 }
 
@@ -105,6 +106,40 @@ bool CIndicator::Get_Mon_spread(const CThostFtdcDepthMarketDataField& stTickA, c
 
 	dMonSpread = midA - midB;
 	return true;
+}
+
+namespace
+{
+// 两种盘口月差都依赖完整、有限且未交叉的买一卖一报价。
+bool HasValidTopBook(const CThostFtdcDepthMarketDataField& tick)
+{
+	return std::isfinite(tick.BidPrice1) && std::isfinite(tick.AskPrice1) &&
+		tick.BidPrice1 > 0 && tick.AskPrice1 > 0 && tick.AskPrice1 >= tick.BidPrice1;
+}
+}
+
+bool CIndicator::GetSellABuyBSpread(const CThostFtdcDepthMarketDataField& stTickA,
+	const CThostFtdcDepthMarketDataField& stTickB, double& dSpread)
+{
+	if (!HasValidTopBook(stTickA) || !HasValidTopBook(stTickB))
+	{
+		return false;
+	}
+
+	dSpread = stTickA.AskPrice1 - stTickB.BidPrice1;
+	return std::isfinite(dSpread);
+}
+
+bool CIndicator::GetBuyASellBSpread(const CThostFtdcDepthMarketDataField& stTickA,
+	const CThostFtdcDepthMarketDataField& stTickB, double& dSpread)
+{
+	if (!HasValidTopBook(stTickA) || !HasValidTopBook(stTickB))
+	{
+		return false;
+	}
+
+	dSpread = stTickA.BidPrice1 - stTickB.AskPrice1;
+	return std::isfinite(dSpread);
 }
 
 bool CIndicator::GetSingleVol(const CDataBuffer& dataBuffer, const std::string& instrumentID, std::size_t window, double& dVol)

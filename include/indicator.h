@@ -41,6 +41,14 @@ public:
 	// 获取一个时点的月差，方向为 stTickA - stTickB，价格口径使用 MidPrice。
 	static bool Get_Mon_spread(const CThostFtdcDepthMarketDataField& stTickA, const CThostFtdcDepthMarketDataField& stTickB, double& dMonSpread);
 
+	// 盘口月差：A 的卖一价（Ask1）减 B 的买一价（Bid1）。
+	static bool GetSellABuyBSpread(const CThostFtdcDepthMarketDataField& stTickA,
+		const CThostFtdcDepthMarketDataField& stTickB, double& dSpread);
+
+	// 盘口月差：A 的买一价（Bid1）减 B 的卖一价（Ask1）。
+	static bool GetBuyASellBSpread(const CThostFtdcDepthMarketDataField& stTickA,
+		const CThostFtdcDepthMarketDataField& stTickB, double& dSpread);
+
 	// 获取单品种最近 window 个 MidPrice 的实时波动率。
 	bool GetSingleVol(const CDataBuffer& dataBuffer, const std::string& instrumentID, std::size_t window, double& dVol);
 
