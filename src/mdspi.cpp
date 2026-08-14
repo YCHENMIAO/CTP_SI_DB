@@ -191,6 +191,7 @@ void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField* pDepthMarketDat
 		<< " Last=" << pDepthMarketData->LastPrice
 		<< " Bid1=" << pDepthMarketData->BidPrice1 << "x" << pDepthMarketData->BidVolume1
 		<< " Ask1=" << pDepthMarketData->AskPrice1 << "x" << pDepthMarketData->AskVolume1
+		<< " Ask2=" << pDepthMarketData->AskPrice1 << "x" << pDepthMarketData->AskVolume2
 		<< " Volume=" << pDepthMarketData->Volume
 		<< " Turnover=" << pDepthMarketData->Turnover
 		<< " OpenInterest=" << pDepthMarketData->OpenInterest

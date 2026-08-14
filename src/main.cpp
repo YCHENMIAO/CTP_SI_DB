@@ -13,6 +13,7 @@
 #include "tdspi.h"
 #include "DataBuffer.h"
 #include "indicator.h"
+#include "gui/GUI_APP.h"
 #include <algorithm>
 #include <deque>
 #include <cstdio>
@@ -81,7 +82,12 @@ int main()
 	//-----------------参考ctp函数手册中的行情/交易接口API---------------
 	std::string marketFlowPath = ProjectPath("flow/marketflow/");
 	std::string tradeFlowPath = ProjectPath("flow/tradeflow/");
-	CThostFtdcMdApi* pMDUserApi = CThostFtdcMdApi::CreateFtdcMdApi(marketFlowPath.c_str());
+	pMDUserApi = CThostFtdcMdApi::CreateFtdcMdApi(marketFlowPath.c_str());
+	if (pMDUserApi == nullptr)
+	{
+		cerr << "创建行情API失败" << endl;
+		return 1;
+	}
 	const char* ver_Md = CThostFtdcMdApi::GetApiVersion();
 	printf("行情API版本：%s\n", ver_Md);
 	MdSpi* pMDUserSpi = new MdSpi(pMDUserApi);
@@ -89,6 +95,15 @@ int main()
 
 	//-----------------3、创建交易Api和回调类实例------------------------
 	pTDUserApi = CThostFtdcTraderApi::CreateFtdcTraderApi(tradeFlowPath.c_str());
+	if (pTDUserApi == nullptr)
+	{
+		cerr << "创建交易API失败" << endl;
+		pMDUserApi->RegisterSpi(nullptr);
+		pMDUserApi->Release();
+		pMDUserApi = nullptr;
+		delete pMDUserSpi;
+		return 1;
+	}
 	TdSpi* pTDUserSpi = new TdSpi();
 	pTDUserApi->RegisterSpi(pTDUserSpi);//api注册回调类
 
@@ -98,6 +113,24 @@ int main()
 	//恢复策略类指针初始化，并设置策略的初始状态
     g_pDataBuffer = new CDataBuffer();
     g_pCIndicator = new CIndicator();
+	GuiApp gui(*g_pDataBuffer, *g_pCIndicator);
+	if (!gui.Initialize())
+	{
+		cerr << "GUI初始化失败，CTP未启动" << endl;
+		pMDUserApi->RegisterSpi(nullptr);
+		pTDUserApi->RegisterSpi(nullptr);
+		pMDUserApi->Release();
+		pTDUserApi->Release();
+		pMDUserApi = nullptr;
+		pTDUserApi = nullptr;
+		delete pMDUserSpi;
+		delete pTDUserSpi;
+		delete g_pDataBuffer;
+		delete g_pCIndicator;
+		g_pDataBuffer = nullptr;
+		g_pCIndicator = nullptr;
+		return 1;
+	}
 
 	//--------------启动行情线程，行情线程引导交易线程-
 	char mdFront[50];
@@ -105,12 +138,30 @@ int main()
 	pMDUserApi->RegisterFront(mdFront);
 	pMDUserApi->Init();
 
-	
-	//--------------阻塞行情与交易线程-----------------
-	pMDUserApi->Join();
-	pTDUserApi->Join();
-	pMDUserApi->Release();
-	pTDUserApi->Release();
+	// CTP 使用内部线程处理回调，主线程运行 GLFW/ImGui 事件循环。
+	gui.Run();
+
+	// 主窗口关闭后先停止行情回调，避免行情回调继续启动或访问交易 API。
+	if (pMDUserApi != nullptr)
+	{
+		pMDUserApi->RegisterSpi(nullptr);
+		pMDUserApi->Release();
+		pMDUserApi = nullptr;
+	}
+	if (pTDUserApi != nullptr)
+	{
+		pTDUserApi->RegisterSpi(nullptr);
+		pTDUserApi->Release();
+		pTDUserApi = nullptr;
+	}
+
+	delete pMDUserSpi;
+	delete pTDUserSpi;
+	delete g_pDataBuffer;
+	delete g_pCIndicator;
+	g_pDataBuffer = nullptr;
+	g_pCIndicator = nullptr;
+	gui.Shutdown();
 	return 0;
 }
 
@@ -120,7 +171,7 @@ void ReadContracts(map<std::string, std::string>& contractmap)
 	std::ifstream file2(ProjectPath("config/contracts.txt"), ios::in);
 	string fieldKey;
 	string fieldValue;
-	char dataLine[256];
+	char dataLine[512];
 	if (!file2)
 	{
 		cout << "配置文件不存在" << endl;
